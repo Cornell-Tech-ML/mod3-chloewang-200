@@ -354,7 +354,7 @@ def tensor_zip(
         # TODO: Implement for Task 2.3.
         # raise NotImplementedError("Need to implement for Task 2.3")
         for out_index in range(len(out)):
-            out_pos = [0] * len(out_shape)
+            out_pos = np.zeros(len(out_shape), np.int32)
             a_pos = np.zeros(len(a_shape), np.int32)
             b_pos = np.zeros(len(b_shape), np.int32)
 
