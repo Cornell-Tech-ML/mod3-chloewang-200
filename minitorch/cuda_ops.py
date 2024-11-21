@@ -456,10 +456,6 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     if global_row < size and global_col < size:
         out[global_row * size + global_col] = partial_sum
 
-
-jit_mm_practice = cuda.jit()(_mm_practice)
-
-
 jit_mm_practice = jit(_mm_practice)
 
 
