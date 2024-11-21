@@ -414,43 +414,47 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     """
     BLOCK_DIM = 32
 
-    shared_a = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
-    shared_b = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
+    # Allocate shared memory for input tiles
+    a_tile = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
+    b_tile = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
 
-    tx = cuda.threadIdx.x
-    ty = cuda.threadIdx.y
-    bx = cuda.blockIdx.x
-    by = cuda.blockIdx.y
+    # Thread indices within the block
+    local_row = cuda.threadIdx.y
+    local_col = cuda.threadIdx.x
 
-    row = by * BLOCK_DIM + ty
-    col = bx * BLOCK_DIM + tx
+    # Global indices for this thread
+    global_row = cuda.blockIdx.y * BLOCK_DIM + local_row
+    global_col = cuda.blockIdx.x * BLOCK_DIM + local_col
 
-    # Initialize output value
-    temp = 0.0
+    # Initialize accumulator for the dot product
+    partial_sum = 0.0
 
-    for m in range(size // BLOCK_DIM):
-        # Load elements into shared memory
-        if row < size and (m * BLOCK_DIM + tx) < size:
-            shared_a[ty, tx] = a[row * size + m * BLOCK_DIM + tx]
+    # Loop over tiles of `a` and `b`
+    for tile_start in range(0, size, BLOCK_DIM):
+        # Load data from global memory into shared memory
+        if global_row < size and tile_start + local_col < size:
+            a_tile[local_row, local_col] = a[global_row * size + tile_start + local_col]
         else:
-            shared_a[ty, tx] = 0.0
+            a_tile[local_row, local_col] = 0.0
 
-        if col < size and (m * BLOCK_DIM + ty) < size:
-            shared_b[ty, tx] = b[(m * BLOCK_DIM + ty) * size + col]
+        if tile_start + local_row < size and global_col < size:
+            b_tile[local_row, local_col] = b[(tile_start + local_row) * size + global_col]
         else:
-            shared_b[ty, tx] = 0.0
+            b_tile[local_row, local_col] = 0.0
 
+        # Synchronize to ensure shared memory is fully populated
         cuda.syncthreads()
 
-        # Compute partial product
+        # Compute partial sum for the current tile
         for k in range(BLOCK_DIM):
-            temp += shared_a[ty, k] * shared_b[k, tx]
+            partial_sum += a_tile[local_row, k] * b_tile[k, local_col]
 
+        # Synchronize before loading the next tile
         cuda.syncthreads()
 
-    # Write the result to the output
-    if row < size and col < size:
-        out[row * size + col] = temp
+    # Write the computed value to the global memory
+    if global_row < size and global_col < size:
+        out[global_row * size + global_col] = partial_sum
 
 
 jit_mm_practice = cuda.jit()(_mm_practice)
