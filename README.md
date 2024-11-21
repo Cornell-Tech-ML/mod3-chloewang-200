@@ -33,6 +33,60 @@ The files that will be synced are:
 
 # 3.5
 
+## Simple
+```
+Epoch  0  loss  6.211235353021375 correct 36
+Epoch  10  loss  2.19127950013039 correct 47
+Epoch  20  loss  1.4816074335032168 correct 49
+Epoch  30  loss  1.0329069114469975 correct 49
+Epoch  40  loss  1.283262857380862 correct 50
+Epoch  50  loss  0.6453182890291175 correct 48
+Epoch  60  loss  0.5572747308230198 correct 49
+Epoch  70  loss  0.9376906470248648 correct 50
+Epoch  80  loss  0.5906952824734057 correct 50
+Epoch  90  loss  0.43853210342986165 correct 50
+Epoch  100  loss  0.6598587855959119 correct 50
+Epoch  110  loss  0.18293504459030313 correct 50
+Epoch  120  loss  0.12430816838788501 correct 50
+Epoch  130  loss  0.37958360119650686 correct 50
+Epoch  140  loss  0.3178915527772254 correct 50
+Epoch  150  loss  0.397342447771347 correct 50
+Epoch  160  loss  0.5409547707756727 correct 50
+Epoch  170  loss  0.4559593226070752 correct 50
+Epoch  180  loss  0.3833895020953361 correct 50
+Epoch  190  loss  0.5728523436189813 correct 50
+Epoch  200  loss  0.22439762798535148 correct 50
+Epoch  210  loss  0.025288997065458903 correct 50
+Epoch  220  loss  0.19647686825869184 correct 50
+Epoch  230  loss  0.21505935362872458 correct 50
+Epoch  240  loss  0.018012555260724667 correct 50
+Epoch  250  loss  0.8053052455043793 correct 50
+Epoch  260  loss  0.11880522140416375 correct 50
+Epoch  270  loss  0.14151656212514044 correct 50
+Epoch  280  loss  0.15653940076564915 correct 50
+Epoch  290  loss  0.18090740621103063 correct 50
+Epoch  300  loss  0.05014822760307206 correct 50
+Epoch  310  loss  0.14974098430421368 correct 50
+Epoch  320  loss  0.24049842161229923 correct 50
+Epoch  330  loss  0.0509718340645229 correct 50
+Epoch  340  loss  0.3008884118188292 correct 50
+Epoch  350  loss  0.3165934919062321 correct 50
+Epoch  360  loss  0.001542285743748907 correct 50
+Epoch  370  loss  0.024735058156703005 correct 50
+Epoch  380  loss  0.03970698495746322 correct 50
+Epoch  390  loss  0.1211959356233181 correct 50
+Epoch  400  loss  0.14535265635419758 correct 50
+Epoch  410  loss  0.14397131561579116 correct 50
+Epoch  420  loss  0.30795122188863727 correct 50
+Epoch  430  loss  0.058367531425256663 correct 50
+Epoch  440  loss  0.04490204582603363 correct 50
+Epoch  450  loss  0.0616295789796114 correct 50
+Epoch  460  loss  0.15075067205942172 correct 50
+Epoch  470  loss  0.25179170679828056 correct 50
+Epoch  480  loss  0.17255739528717023 correct 50
+Epoch  490  loss  0.07575385096505952 correct 50
+```
+
 ## Split
 
 50 Points, 100 Hidden Layers, 0.05 Learning Rate
