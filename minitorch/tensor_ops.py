@@ -38,9 +38,25 @@ class TensorOps:
     @staticmethod
     def reduce(
         fn: Callable[[float, float], float], start: float = 0.0
-    ) -> Callable[[Tensor, int], Tensor]: ...
+    ) -> Callable[[Tensor, int], Tensor]:
+        """Creates a higher-order function to reduce a tensor along a specified dimension.
 
-    ...
+        The returned function reduces the values of a tensor along the specified dimension
+        using the provided binary reduction function `fn`. The reduction starts with the
+        initial value `start`.
+
+        Args:
+        ----
+            fn (Callable[[float, float], float]): A binary function used to combine values.
+            start (float, optional): The initial value for the reduction operation. Defaults to 0.0.
+
+        Returns:
+        -------
+            Callable[[Tensor, int], Tensor]: A function that takes a tensor and a dimension,
+            then applies the reduction along that dimension, producing a new tensor.
+
+        """
+        ...
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
@@ -200,6 +216,7 @@ class SimpleOps(TensorOps):
         Args:
         ----
             fn: function from two floats-to-float to apply
+            start: Initial value for the reduction operation.
             a (:class:`TensorData`): tensor to reduce over
             dim (int): int of dim to reduce
 

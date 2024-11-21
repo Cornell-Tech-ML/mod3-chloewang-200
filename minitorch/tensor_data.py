@@ -119,8 +119,8 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     len1, len2 = len(shape1), len(shape2)
     max_len = max(len1, len2)
 
-    shape1 = (1,) * (max_len - len1) + shape1
-    shape2 = (1,) * (max_len - len2) + shape2
+    shape1 = (1,) * (max_len - len1) + shape1  # type: ignore
+    shape2 = (1,) * (max_len - len2) + shape2  # type: ignore
 
     for dim1, dim2 in zip(shape1, shape2):
         if dim1 == dim2:

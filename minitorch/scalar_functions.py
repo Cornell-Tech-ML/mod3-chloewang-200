@@ -146,7 +146,7 @@ class Neg(ScalarFunction):
         return -a
 
     @staticmethod
-    def backward(ctx: Context, d_output: float) -> Tuple[float, ...]:
+    def backward(ctx: Context, d_output: float) -> float:
         """Computes the gradient of the negation function."""
         return operators.neg(d_output)
 
@@ -165,7 +165,7 @@ class Sigmoid(ScalarFunction):
         return res
 
     @staticmethod
-    def backward(ctx: Context, d_output: float) -> Tuple[float, ...]:
+    def backward(ctx: Context, d_output: float) -> float:
         """Computes the gradient of the sigmoid function."""
         sigmoid_value = ctx.saved_values[0]
         return operators.mul(
@@ -203,7 +203,7 @@ class Exp(ScalarFunction):
         return exp_value
 
     @staticmethod
-    def backward(ctx: Context, d_output: float) -> Tuple[float, ...]:
+    def backward(ctx: Context, d_output: float) -> float:
         """Computes the gradient of the exponential function."""
         exp_value = ctx.saved_values[0]
         return operators.mul(d_output, exp_value)

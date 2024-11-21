@@ -29,6 +29,7 @@ Fn = TypeVar("Fn")
 
 
 def njit(fn: Fn, **kwargs: Any) -> Fn:
+    """Decorator to JIT compile a function using NUMBA."""
     return _njit(inline="always", **kwargs)(fn)  # type: ignore
 
 
