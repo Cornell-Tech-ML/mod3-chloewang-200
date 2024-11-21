@@ -293,8 +293,8 @@ def tensor_map(
         # raise NotImplementedError("Need to implement for Task 2.3")
         for out_index in range(len(out)):
             in_index = 0
-            in_pos = np.zeros(MAX_DIMS, np.int32)
-            out_pos = np.zeros(MAX_DIMS, np.int32)
+            in_pos = np.zeros(len(in_shape), np.int32)
+            out_pos = np.zeros(len(out_shape), np.int32)
 
             to_index(out_index, out_shape, out_pos)
 
