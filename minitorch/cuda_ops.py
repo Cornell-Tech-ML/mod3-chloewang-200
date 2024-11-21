@@ -255,7 +255,6 @@ def tensor_zip(
         # Apply the function and store the result
         out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
 
-
     return cuda.jit()(_zip)  # type: ignore
 
 
@@ -308,7 +307,9 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
     if pos == 0:
         out[cuda.blockIdx.x] = cache[0]
 
+
 jit_sum_practice = cuda.jit()(_sum_practice)
+
 
 def sum_practice(a: Tensor) -> TensorData:
     (size,) = a.shape
@@ -348,7 +349,6 @@ def tensor_reduce(
         reduce_dim: int,
         reduce_value: float,
     ) -> None:
-
         BLOCK_DIM = 1024
         cache = cuda.shared.array(BLOCK_DIM, numba.float64)
 
@@ -443,7 +443,9 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
             a_tile[local_row, local_col] = 0.0
 
         if tile_start + local_row < size and global_col < size:
-            b_tile[local_row, local_col] = b[(tile_start + local_row) * size + global_col]
+            b_tile[local_row, local_col] = b[
+                (tile_start + local_row) * size + global_col
+            ]
         else:
             b_tile[local_row, local_col] = 0.0
 
@@ -460,6 +462,7 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     # Write the computed value to the global memory
     if global_row < size and global_col < size:
         out[global_row * size + global_col] = partial_sum
+
 
 jit_mm_practice = jit(_mm_practice)
 

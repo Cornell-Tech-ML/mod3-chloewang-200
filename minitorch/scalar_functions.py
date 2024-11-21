@@ -173,6 +173,7 @@ class Sigmoid(ScalarFunction):
             operators.add(1.0, operators.neg(sigmoid_value)),
         )
 
+
 # relu
 class ReLU(ScalarFunction):
     """ReLU function f(x) = max(0, x)"""

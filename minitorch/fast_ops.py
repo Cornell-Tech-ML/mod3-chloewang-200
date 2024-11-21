@@ -7,7 +7,6 @@ from numba import prange
 from numba import njit as _njit
 
 from .tensor_data import (
-    MAX_DIMS,
     broadcast_index,
     index_to_position,
     shape_broadcast,
@@ -19,7 +18,7 @@ if TYPE_CHECKING:
     from typing import Callable, Optional
 
     from .tensor import Tensor
-    from .tensor_data import Index, Shape, Storage, Strides
+    from .tensor_data import Shape, Storage, Strides
 
 # TIP: Use `NUMBA_DISABLE_JIT=1 pytest tests/ -m task3_1` to run these tests without JIT.
 
@@ -169,7 +168,9 @@ def tensor_map(
         in_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 3.1.
-        if (np.array_equal(out_strides, in_strides) and np.array_equal(out_shape, in_shape)):
+        if np.array_equal(out_strides, in_strides) and np.array_equal(
+            out_shape, in_shape
+        ):
             # Fast path: simple iteration over aligned tensors
             for idx in prange(len(out)):
                 out[idx] = fn(in_storage[idx])
@@ -227,8 +228,11 @@ def tensor_zip(
     ) -> None:
         # TODO: Implement for Task 3.1.
         # print("calling zip")
-        if (np.array_equal(a_strides, b_strides) and np.array_equal(a_shape, b_shape)
-              and (np.array_equal(b_strides, out_strides))):
+        if (
+            np.array_equal(a_strides, b_strides)
+            and np.array_equal(a_shape, b_shape)
+            and (np.array_equal(b_strides, out_strides))
+        ):
             # print("here")
             for i in prange(len(out)):
                 out[i] = fn(a_storage[i], b_storage[i])
@@ -282,7 +286,6 @@ def tensor_reduce(
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-
         # Main loop in parallel over the output elements
         for out_pos in prange(len(out)):
             out_index = np.empty(len(out_shape), dtype=np.int32)
@@ -298,6 +301,7 @@ def tensor_reduce(
             out[out_pos] = result
 
     return njit(_reduce, parallel=True)  # type: ignore
+
 
 def _tensor_matrix_multiply(
     out: Storage,
@@ -356,6 +360,7 @@ def _tensor_matrix_multiply(
                     posB += b_strides[1]
                 outPos = x * out_strides[0] + y * out_strides[1] + z * out_strides[2]
                 out[outPos] = val
+
 
 tensor_matrix_multiply = njit(_tensor_matrix_multiply, parallel=True)
 assert tensor_matrix_multiply is not None

@@ -166,8 +166,8 @@ class Exp(Function):
         (exp,) = ctx.saved_values
         return grad_output.f.mul_zip(exp, grad_output)
 
-class Sum(Function):
 
+class Sum(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor, dim: Tensor) -> Tensor:
         """Return the sum of a tensor along a dimension."""
@@ -191,8 +191,9 @@ class All(Function):
         print("res", res)
         return a.f.mul_reduce(a, int(dim.item()))
 
+
 class LT(Function):
-    @staticmethod 
+    @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
         ctx.save_for_backward(a.shape, b.shape)
         return a.f.lt_zip(a, b)
@@ -227,16 +228,18 @@ class IsClose(Function):
 class Permute(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, order: Tensor) -> Tensor:
-        """
-        Perform a forward permutation operation.
+        """Perform a forward permutation operation.
 
         Args:
+        ----
             ctx (Context): Context to save information for backward computation.
             a (Tensor): The tensor to permute.
             order (Tensor): The desired permutation order.
 
         Returns:
+        -------
             Tensor: A permuted tensor.
+
         """
         # Save the permutation order for backward pass
         ctx.save_for_backward(order)
@@ -245,15 +248,17 @@ class Permute(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
-        """
-        Perform the backward pass for the permutation.
+        """Perform the backward pass for the permutation.
 
         Args:
+        ----
             ctx (Context): Context with saved values from the forward pass.
             grad_output (Tensor): Gradient of the output with respect to some loss.
 
         Returns:
+        -------
             Tuple[Tensor, float]: Gradient with respect to input tensor and a dummy scalar value.
+
         """
         # Retrieve the saved permutation order
         order: Tensor = ctx.saved_values[0]
@@ -266,6 +271,7 @@ class Permute(Function):
         ]
         # Return the permuted gradient and a dummy value
         return grad_output._new(grad_output._tensor.permute(*order2)), 0.0
+
 
 class View(Function):
     @staticmethod
@@ -306,7 +312,7 @@ class MatMul(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
-        t1, t2 = ctx.saved_values 
+        t1, t2 = ctx.saved_values
 
         def transpose(a: Tensor) -> Tensor:
             order = list(range(a.dims))
@@ -438,7 +444,7 @@ def grad_central_difference(
 
 
 def grad_check(f: Any, *vals: Tensor) -> None:
-    """check if autodiff result is close to central difference result"""
+    """Check if autodiff result is close to central difference result"""
     for x in vals:
         x.requires_grad_(True)
         x.zero_grad_()

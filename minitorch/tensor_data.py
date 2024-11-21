@@ -16,9 +16,7 @@ MAX_DIMS = 32
 
 
 class IndexingError(RuntimeError):
-    """
-    Exception raised for errors related to tensor indexing.
-    """
+    """Exception raised for errors related to tensor indexing."""
 
     pass
 
@@ -35,8 +33,7 @@ UserStrides: TypeAlias = Sequence[int]
 
 
 def index_to_position(index: Index, strides: Strides) -> int:
-    """
-    Converts a multidimensional tensor index into a single-dimensional position in storage
+    """Converts a multidimensional tensor index into a single-dimensional position in storage
     based on tensor strides.
 
     Args:
@@ -47,6 +44,7 @@ def index_to_position(index: Index, strides: Strides) -> int:
     Returns:
     -------
         int: The single-dimensional position corresponding to the index in the storage.
+
     """
     position = 0
     for idx, stride in zip(index, strides):
@@ -55,8 +53,7 @@ def index_to_position(index: Index, strides: Strides) -> int:
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
-    """
-    Convert an ordinal (flat index) to a multidimensional index in the shape.
+    """Convert an ordinal (flat index) to a multidimensional index in the shape.
 
     Args:
     ----
@@ -67,6 +64,7 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
     Returns:
     -------
         None
+
     """
     cur_ord = ordinal + 0
     for i in range(len(shape) - 1, -1, -1):
@@ -74,11 +72,11 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index[i] = int(cur_ord % sh)
         cur_ord = cur_ord // sh
 
+
 def broadcast_index(
     big_index: Index, big_shape: Shape, shape: Shape, out_index: OutIndex
 ) -> None:
-    """
-    Converts a `big_index` from a larger shape to an `out_index` for a smaller shape using
+    """Converts a `big_index` from a larger shape to an `out_index` for a smaller shape using
     broadcasting rules.
 
     Args:
@@ -91,6 +89,7 @@ def broadcast_index(
     Returns:
     -------
         None
+
     """
     for i, s in enumerate(shape):
         if s > 1:
@@ -100,8 +99,7 @@ def broadcast_index(
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
-    """
-    Broadcast two tensor shapes to a compatible shape.
+    """Broadcast two tensor shapes to a compatible shape.
 
     Args:
     ----
@@ -115,6 +113,7 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     Raises:
     ------
         IndexingError: If the shapes cannot be broadcasted.
+
     """
     result_shape = []
     len1, len2 = len(shape1), len(shape2)
@@ -137,8 +136,7 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
-    """
-    Compute strides for a given shape for a contiguous tensor.
+    """Compute strides for a given shape for a contiguous tensor.
 
     Args:
     ----
@@ -147,6 +145,7 @@ def strides_from_shape(shape: UserShape) -> UserStrides:
     Returns:
     -------
         UserStrides: The corresponding strides for the tensor shape.
+
     """
     layout = [1]
     offset = 1
@@ -157,8 +156,7 @@ def strides_from_shape(shape: UserShape) -> UserStrides:
 
 
 class TensorData:
-    """
-    A class representing a tensor's data, including storage, shape, and strides.
+    """A class representing a tensor's data, including storage, shape, and strides.
     Supports basic tensor operations like indexing, reshaping, and broadcasting.
     """
 
@@ -175,14 +173,14 @@ class TensorData:
         shape: UserShape,
         strides: Optional[UserStrides] = None,
     ):
-        """
-        Initialize a new `TensorData` object with storage, shape, and strides.
+        """Initialize a new `TensorData` object with storage, shape, and strides.
 
         Args:
         ----
             storage: Either a sequence of floats or a NumPy array for tensor storage.
             shape: Shape of the tensor.
             strides: Optional strides for the tensor. If not provided, contiguous strides will be used.
+
         """
         if isinstance(storage, np.ndarray):
             self._storage = storage
@@ -205,20 +203,18 @@ class TensorData:
         assert len(self._storage) == self.size
 
     def to_cuda_(self) -> None:  # pragma: no cover
-        """
-        Convert the tensor data to CUDA device memory.
-        """
+        """Convert the tensor data to CUDA device memory."""
         if not numba.cuda.is_cuda_array(self._storage):
             self._storage = numba.cuda.to_device(self._storage)
 
     def is_contiguous(self) -> bool:
-        """
-        Check whether the tensor layout is contiguous, i.e., outer dimensions have larger strides
+        """Check whether the tensor layout is contiguous, i.e., outer dimensions have larger strides
         than inner dimensions.
 
-        Returns:
+        Returns
         -------
             bool: True if the tensor is contiguous.
+
         """
         last = 1e9
         for stride in self._strides:
@@ -229,8 +225,7 @@ class TensorData:
 
     @staticmethod
     def shape_broadcast(shape_a: UserShape, shape_b: UserShape) -> UserShape:
-        """
-        Static method to broadcast two shapes to create a new union shape.
+        """Static method to broadcast two shapes to create a new union shape.
 
         Args:
         ----
@@ -240,12 +235,12 @@ class TensorData:
         Returns:
         -------
             UserShape: The broadcasted shape.
+
         """
         return shape_broadcast(shape_a, shape_b)
 
     def index(self, index: Union[int, UserIndex]) -> int:
-        """
-        Get the flat storage index corresponding to a multidimensional tensor index.
+        """Get the flat storage index corresponding to a multidimensional tensor index.
 
         Args:
         ----
@@ -254,6 +249,7 @@ class TensorData:
         Returns:
         -------
             int: The flat storage index.
+
         """
         if isinstance(index, int):
             aindex: Index = array([index])
@@ -280,11 +276,11 @@ class TensorData:
         Args:
         ----
             None
-            
+
         Yields:
         ------
             Iterable[UserIndex]: An iterable of valid multidimensional indices.
-        
+
         """
         lshape: Shape = array(self.shape)
         out_index: Index = array(self.shape)
@@ -294,7 +290,7 @@ class TensorData:
 
     def sample(self) -> UserIndex:
         """Get a random valid index for the tensor.
-        
+
         Args:
         ----
             None
@@ -302,7 +298,7 @@ class TensorData:
         Returns:
         -------
             UserIndex: A valid random index in the tensor.
-        
+
         """
         return tuple((random.randint(0, s - 1) for s in self.shape))
 
@@ -316,7 +312,7 @@ class TensorData:
         Returns:
         -------
             float: The value at the specified index.
-        
+
         """
         x: float = self._storage[self.index(key)]
         return x
@@ -332,7 +328,7 @@ class TensorData:
         Returns:
         -------
             None
-        
+
         """
         self._storage[self.index(key)] = val
 
@@ -346,7 +342,7 @@ class TensorData:
         Returns:
         -------
             Tuple[Storage, Shape, Strides]: The tensor's storage, shape, and strides as a tuple.
-        
+
         """
         return (self._storage, self._shape, self._strides)
 
@@ -360,7 +356,7 @@ class TensorData:
         Returns:
         -------
             TensorData: A new `TensorData` with the dimensions permuted.
-        
+
         """
         assert list(sorted(order)) == list(
             range(len(self.shape))
@@ -380,7 +376,7 @@ class TensorData:
         Returns:
         -------
             str: The string representation of the tensor.
-        
+
         """
         s = ""
         for index in self.indices():
