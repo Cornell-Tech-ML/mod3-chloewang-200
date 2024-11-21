@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable, Optional, Type
 
 from typing_extensions import Protocol
+import numpy as np
 
 from . import operators
 from .tensor_data import (
@@ -54,7 +55,6 @@ class TensorOps:
         -------
             Callable[[Tensor, int], Tensor]: A function that takes a tensor and a dimension,
             then applies the reduction along that dimension, producing a new tensor.
-
         """
         ...
 
@@ -293,8 +293,8 @@ def tensor_map(
         # raise NotImplementedError("Need to implement for Task 2.3")
         for out_index in range(len(out)):
             in_index = 0
-            in_pos = [0] * len(in_shape)
-            out_pos = [0] * len(out_shape)
+            in_pos = np.zeros(MAX_DIMS, np.int32)
+            out_pos = np.zeros(MAX_DIMS, np.int32)
 
             to_index(out_index, out_shape, out_pos)
 
@@ -355,8 +355,8 @@ def tensor_zip(
         # raise NotImplementedError("Need to implement for Task 2.3")
         for out_index in range(len(out)):
             out_pos = [0] * len(out_shape)
-            a_pos = [0] * len(a_shape)
-            b_pos = [0] * len(b_shape)
+            a_pos = np.zeros(len(a_shape), np.int32)
+            b_pos = np.zeros(len(b_shape), np.int32)
 
             to_index(out_index, out_shape, out_pos)
 
@@ -405,8 +405,8 @@ def tensor_reduce(
         # raise NotImplementedError("Need to implement for Task 2.3")
         print("reducing")
         for out_index in range(len(out)):
-            out_pos = [0] * len(out_shape)
-            in_pos = [0] * len(a_shape)
+            out_pos = np.zeros(len(out_shape), np.int32)
+            in_pos = np.zeros(len(a_shape), np.int32)
 
             to_index(out_index, out_shape, out_pos)
 
