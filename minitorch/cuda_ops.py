@@ -174,7 +174,29 @@ def tensor_map(
         in_index = cuda.local.array(MAX_DIMS, numba.int32)
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
         # TODO: Implement for Task 3.3.
-        raise NotImplementedError("Need to implement for Task 3.3")
+        # Calculate the global thread index
+        i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
+
+        # Ensure the thread index is within the bounds of the output tensor
+        if i >= out_size:
+            return
+
+        # Allocate local arrays for indexing
+        out_index = cuda.local.array(MAX_DIMS, numba.int32)
+        in_index = cuda.local.array(MAX_DIMS, numba.int32)
+
+        # Convert the flat index to multi-dimensional index
+        to_index(i, out_shape, out_index)
+
+        # Adjust for broadcasting
+        broadcast_index(out_index, out_shape, in_shape, in_index)
+
+        # Calculate positions in input and output storage
+        in_pos = index_to_position(in_index, in_strides)
+        out_pos = index_to_position(out_index, out_strides)
+
+        # Apply the function and store the result
+        out[out_pos] = fn(in_storage[in_pos])
 
     return cuda.jit()(_map)  # type: ignore
 
@@ -217,7 +239,33 @@ def tensor_zip(
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
 
         # TODO: Implement for Task 3.3.
-        raise NotImplementedError("Need to implement for Task 3.3")
+        # Calculate global thread ID
+        i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
+
+        # Ensure thread ID is within bounds
+        if i >= out_size:
+            return
+
+        # Local arrays for indexing
+        out_index = cuda.local.array(MAX_DIMS, numba.int32)
+        a_index = cuda.local.array(MAX_DIMS, numba.int32)
+        b_index = cuda.local.array(MAX_DIMS, numba.int32)
+
+        # Convert flat index to multi-dimensional index
+        to_index(i, out_shape, out_index)
+
+        # Adjust for broadcasting
+        broadcast_index(out_index, out_shape, a_shape, a_index)
+        broadcast_index(out_index, out_shape, b_shape, b_index)
+
+        # Calculate positions in storage
+        a_pos = index_to_position(a_index, a_strides)
+        b_pos = index_to_position(b_index, b_strides)
+        out_pos = index_to_position(out_index, out_strides)
+
+        # Apply the function and store the result
+        out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
+
 
     return cuda.jit()(_zip)  # type: ignore
 

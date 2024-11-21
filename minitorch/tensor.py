@@ -115,7 +115,17 @@ class Tensor:
             b._type_(self.backend)
             c = b
         return c
-
+    
+    @property
+    def size(self) ->int:
+        return self._tensor.size
+    
+    @property
+    def dims(self) -> int:
+        """Returns the dimension of tensor."""
+        return self._tensor.dims
+    
+    
     def item(self) -> float:
         """Convert a 1-element tensor to a float"""
         assert self.size == 1
@@ -182,7 +192,7 @@ class Tensor:
         if self.shape == true_shape:
             return buf
 
-        # Case 3: Still different, reduce extra dims.
+        # Case 3: Still different, reduce extra dims. 
         out = buf
         orig_shape = [1] * (len(out.shape) - len(self.shape)) + list(self.shape)
         for dim, shape in enumerate(out.shape):
@@ -284,4 +294,110 @@ class Tensor:
         return self._tensor.shape
 
     # Functions
-    raise NotImplementedError("Need to include this file from past assignment.")
+    # TODO: Implement for Task 2.3.
+    def __add__(self, other: TensorLike) -> Tensor:
+        """Returns the result of this tensor plus another tensor."""
+        other = self._ensure_tensor(other)
+        return Add.apply(self, other)
+
+    def __sub__(self, other: TensorLike) -> Tensor:
+        """Returns the result of this tensor minus other."""
+        other = self._ensure_tensor(other)
+        return Add.apply(self, -(other))
+
+    def __mul__(self, other: TensorLike) -> Tensor:
+        """Returns the result of `self * other`."""
+        other = self._ensure_tensor(other)
+        return Mul.apply(self, other)
+    
+    def __neg__(self) -> Tensor:
+        """Returns the negation of the tensor."""
+        return Neg.apply(self)
+    
+    def __lt__(self, other: TensorLike) -> Tensor:
+        """Returns 1 if this tensor is less than another tensor."""
+        other = self._ensure_tensor(other)
+        return LT.apply(self, other)
+
+    def __gt__(self, other: TensorLike) -> Tensor:
+        """Returns 1 if this tensor is greater than another tensor."""
+        other = self._ensure_tensor(other)
+        return LT.apply(other, self)
+
+    def __eq__(self, other: TensorLike) -> Tensor: 
+        """Return if this tensor is equal to another tensor."""
+        other = self._ensure_tensor(other)
+        return EQ.apply(self, other)
+
+    def __radd__(self, other: TensorLike) -> Tensor:
+        """Returns the result of `other + self`."""
+        return self.__add__(other)
+
+    def __rmul__(self, other: TensorLike) -> Tensor:
+        """Returns the result of `other * self`."""
+        return self.__mul__(other)
+
+    def __rsub__(self, other: TensorLike) -> Tensor:
+        """Subtraction is not commutative, so we negate and add."""
+        return Neg.apply(self) + other
+
+    def relu(self) -> Tensor:
+        """Returns the ReLU of tensor."""
+        return ReLU.apply(self)
+
+    def exp(self) -> Tensor:
+        """Returns the exponential of tensor."""
+        return Exp.apply(self)
+
+    def log(self) -> Tensor:
+        return Log.apply(self)
+
+    def sigmoid(self) -> Tensor:
+        return Sigmoid.apply(self)
+    
+    def sum(self, dim: Optional[int] = None) -> Tensor:
+        "Compute the sum over dimension `dim`"
+        if dim is None:
+            return Sum.apply(self.contiguous().view(self.size), self._ensure_tensor(0))
+        dim = self._ensure_tensor(dim)
+        return Sum.apply(self, dim)
+    
+    def all(self, dim: Optional[int] = None) -> Tensor:
+        """Returns 1 if all elements in the tensor are non-zero along a dimension."""
+        print("callging dim", flush=True)
+        print("dim", dim)
+        if dim is None:
+            return All.apply(self.view(self.size), self._ensure_tensor(0))
+        else:
+            return All.apply(self, self._ensure_tensor(dim))
+    
+    def is_close(self, other: Tensor) -> Tensor:
+        return IsClose.apply(self, other)
+
+    def permute(self, *order: int) -> Tensor:
+        
+        """Permutes the dimensions of the tensor."""
+        # new_shape = tuple(self.shape[i] for i in order)
+        # new_strides = tuple(self.strides[i] for i in order)
+        # TensorData – New TensorData with the same storage and a new dimension order.
+
+        # *order (int, default: () ) – a permutation of the dimensions
+
+        return Permute.apply(self, tensor(list(order)))
+
+    def mean(self, dim: Optional[int] = None) -> Tensor:
+        if dim is None:
+            return self.sum(0) / self.size
+        return self.sum(dim) / self.shape[dim]
+
+    def view(self, *shape: int) -> Tensor:
+        """Reshapes the tensor without changing its data."""
+        assert self._tensor.is_contiguous(), "Tensor must be contiguous for view."
+        size = operators.prod(shape)
+        assert size == operators.prod(self.shape), "New shape must match the total number of elements."
+        return View.apply(self, tensor(list(shape)))
+
+    def zero_grad_(self) -> None:
+        """Sets the gradient to None."""
+        self.grad = None            
+
