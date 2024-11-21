@@ -31,6 +31,317 @@ The files that will be synced are:
 
         minitorch/tensor_data.py minitorch/tensor_functions.py minitorch/tensor_ops.py minitorch/operators.py minitorch/scalar.py minitorch/scalar_functions.py minitorch/module.py minitorch/autodiff.py minitorch/module.py project/run_manual.py project/run_scalar.py project/run_tensor.py minitorch/operators.py minitorch/module.py minitorch/autodiff.py minitorch/tensor.py minitorch/datasets.py minitorch/testing.py minitorch/optim.py
 
+# 3.2 Parallel Output
+
+```
+reducing sismpleOps
+reducing sismpleOps
+MAP
+ 
+================================================================================
+ Parallel Accelerator Optimizing:  Function tensor_map.<locals>._map, 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (163)  
+================================================================================
+
+
+Parallel loop listing for  Function tensor_map.<locals>._map, /Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (163) 
+----------------------------------------------------------------------------|loop #ID
+    def _map(                                                               | 
+        out: Storage,                                                       | 
+        out_shape: Shape,                                                   | 
+        out_strides: Strides,                                               | 
+        in_storage: Storage,                                                | 
+        in_shape: Shape,                                                    | 
+        in_strides: Strides,                                                | 
+    ) -> None:                                                              | 
+        # TODO: Implement for Task 3.1.                                     | 
+        if np.array_equal(out_strides, in_strides) and np.array_equal(      | 
+            out_shape, in_shape                                             | 
+        ):                                                                  | 
+            # Fast path: simple iteration over aligned tensors              | 
+            for idx in prange(len(out)):------------------------------------| #0
+                out[idx] = fn(in_storage[idx])                              | 
+        else:                                                               | 
+            # General path: handles broadcasting and non-aligned strides    | 
+            for idx in prange(len(out)):------------------------------------| #1
+                out_idx = np.empty(len(out_shape), dtype=np.int32)          | 
+                in_idx = np.empty(len(in_shape), dtype=np.int32)            | 
+                # Convert linear index to multidimensional index            | 
+                to_index(idx, out_shape, out_idx)                           | 
+                # Adjust indices for broadcasting                           | 
+                broadcast_index(out_idx, out_shape, in_shape, in_idx)       | 
+                # Calculate storage positions                               | 
+                in_pos = index_to_position(in_idx, in_strides)              | 
+                out_pos = index_to_position(out_idx, out_strides)           | 
+                # Apply the function and store the result                   | 
+                out[out_pos] = fn(in_storage[in_pos])                       | 
+--------------------------------- Fusing loops ---------------------------------
+Attempting fusion of parallel loops (combines loops with similar properties)...
+Following the attempted fusion of parallel for-loops there are 2 parallel for-
+loop(s) (originating from loops labelled: #0, #1).
+--------------------------------------------------------------------------------
+----------------------------- Before Optimisation ------------------------------
+--------------------------------------------------------------------------------
+------------------------------ After Optimisation ------------------------------
+Parallel structure is already optimal.
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+ 
+---------------------------Loop invariant code motion---------------------------
+Allocation hoisting:
+The memory allocation derived from the instruction at 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (181) 
+is hoisted out of the parallel loop labelled #1 (it will be performed before the
+ loop is executed and reused inside the loop):
+   Allocation:: out_idx = np.empty(len(out_shape), dtype=np.int32)
+    - numpy.empty() is used for the allocation.
+The memory allocation derived from the instruction at 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (182) 
+is hoisted out of the parallel loop labelled #1 (it will be performed before the
+ loop is executed and reused inside the loop):
+   Allocation:: in_idx = np.empty(len(in_shape), dtype=np.int32)
+    - numpy.empty() is used for the allocation.
+None
+ZIP
+ 
+================================================================================
+ Parallel Accelerator Optimizing:  Function tensor_zip.<locals>._zip, 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (219)  
+================================================================================
+
+
+Parallel loop listing for  Function tensor_zip.<locals>._zip, /Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (219) 
+---------------------------------------------------------------------------|loop #ID
+    def _zip(                                                              | 
+        out: Storage,                                                      | 
+        out_shape: Shape,                                                  | 
+        out_strides: Strides,                                              | 
+        a_storage: Storage,                                                | 
+        a_shape: Shape,                                                    | 
+        a_strides: Strides,                                                | 
+        b_storage: Storage,                                                | 
+        b_shape: Shape,                                                    | 
+        b_strides: Strides,                                                | 
+    ) -> None:                                                             | 
+        # TODO: Implement for Task 3.1.                                    | 
+        # print("calling zip")                                             | 
+        if (                                                               | 
+            np.array_equal(a_strides, b_strides)                           | 
+            and np.array_equal(a_shape, b_shape)                           | 
+            and (np.array_equal(b_strides, out_strides))                   | 
+        ):                                                                 | 
+            # print("here")                                                | 
+            for i in prange(len(out)):-------------------------------------| #2
+                out[i] = fn(a_storage[i], b_storage[i])                    | 
+        else:                                                              | 
+            # General path for broadcasting or non-aligned tensors         | 
+            for i in prange(len(out)):-------------------------------------| #3
+                # print(i)                                                 | 
+                out_index = np.empty(len(out_shape), dtype=np.int32)       | 
+                a_index = np.empty(len(a_shape), dtype=np.int32)           | 
+                b_index = np.empty(len(b_shape), dtype=np.int32)           | 
+                # Convert flat index to multidimensional index             | 
+                to_index(i, out_shape, out_index)                          | 
+                # Adjust indices for broadcasting                          | 
+                broadcast_index(out_index, out_shape, a_shape, a_index)    | 
+                broadcast_index(out_index, out_shape, b_shape, b_index)    | 
+                # Compute storage positions and apply the function         | 
+                a_pos = index_to_position(a_index, a_strides)              | 
+                b_pos = index_to_position(b_index, b_strides)              | 
+                out[i] = fn(a_storage[a_pos], b_storage[b_pos])            | 
+--------------------------------- Fusing loops ---------------------------------
+Attempting fusion of parallel loops (combines loops with similar properties)...
+Following the attempted fusion of parallel for-loops there are 2 parallel for-
+loop(s) (originating from loops labelled: #2, #3).
+--------------------------------------------------------------------------------
+----------------------------- Before Optimisation ------------------------------
+--------------------------------------------------------------------------------
+------------------------------ After Optimisation ------------------------------
+Parallel structure is already optimal.
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+ 
+---------------------------Loop invariant code motion---------------------------
+Allocation hoisting:
+The memory allocation derived from the instruction at 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (244) 
+is hoisted out of the parallel loop labelled #3 (it will be performed before the
+ loop is executed and reused inside the loop):
+   Allocation:: out_index = np.empty(len(out_shape), dtype=np.int32)
+    - numpy.empty() is used for the allocation.
+The memory allocation derived from the instruction at 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (245) 
+is hoisted out of the parallel loop labelled #3 (it will be performed before the
+ loop is executed and reused inside the loop):
+   Allocation:: a_index = np.empty(len(a_shape), dtype=np.int32)
+    - numpy.empty() is used for the allocation.
+The memory allocation derived from the instruction at 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (246) 
+is hoisted out of the parallel loop labelled #3 (it will be performed before the
+ loop is executed and reused inside the loop):
+   Allocation:: b_index = np.empty(len(b_shape), dtype=np.int32)
+    - numpy.empty() is used for the allocation.
+None
+REDUCE
+ 
+================================================================================
+ Parallel Accelerator Optimizing:  Function tensor_reduce.<locals>._reduce, 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (281)  
+================================================================================
+
+
+Parallel loop listing for  Function tensor_reduce.<locals>._reduce, /Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (281) 
+-----------------------------------------------------------------------|loop #ID
+    def _reduce(                                                       | 
+        out: Storage,                                                  | 
+        out_shape: Shape,                                              | 
+        out_strides: Strides,                                          | 
+        a_storage: Storage,                                            | 
+        a_shape: Shape,                                                | 
+        a_strides: Strides,                                            | 
+        reduce_dim: int,                                               | 
+    ) -> None:                                                         | 
+        # Main loop in parallel over the output elements               | 
+        for out_pos in prange(len(out)):-------------------------------| #4
+            out_index = np.empty(len(out_shape), dtype=np.int32)       | 
+            to_index(out_pos, out_shape, out_index)                    | 
+            base_position = index_to_position(out_index, a_strides)    | 
+                                                                       | 
+            result = out[out_pos]                                      | 
+            pos = base_position                                        | 
+            for i in range(a_shape[reduce_dim]):                       | 
+                result = fn(result, a_storage[pos])                    | 
+                pos += a_strides[reduce_dim]                           | 
+                                                                       | 
+            out[out_pos] = result                                      | 
+--------------------------------- Fusing loops ---------------------------------
+Attempting fusion of parallel loops (combines loops with similar properties)...
+Following the attempted fusion of parallel for-loops there are 1 parallel for-
+loop(s) (originating from loops labelled: #4).
+--------------------------------------------------------------------------------
+----------------------------- Before Optimisation ------------------------------
+--------------------------------------------------------------------------------
+------------------------------ After Optimisation ------------------------------
+Parallel structure is already optimal.
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+ 
+---------------------------Loop invariant code motion---------------------------
+Allocation hoisting:
+The memory allocation derived from the instruction at 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (292) 
+is hoisted out of the parallel loop labelled #4 (it will be performed before the
+ loop is executed and reused inside the loop):
+   Allocation:: out_index = np.empty(len(out_shape), dtype=np.int32)
+    - numpy.empty() is used for the allocation.
+None
+MATRIX MULTIPLY
+ 
+================================================================================
+ Parallel Accelerator Optimizing:  Function _tensor_matrix_multiply, 
+/Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (307)  
+================================================================================
+
+
+Parallel loop listing for  Function _tensor_matrix_multiply, /Users/wangxinyu/Desktop/ct/mle/mod3-chloewang-200/minitorch/fast_ops.py (307) 
+-----------------------------------------------------------------------------------------|loop #ID
+def _tensor_matrix_multiply(                                                             | 
+    out: Storage,                                                                        | 
+    out_shape: Shape,                                                                    | 
+    out_strides: Strides,                                                                | 
+    a_storage: Storage,                                                                  | 
+    a_shape: Shape,                                                                      | 
+    a_strides: Strides,                                                                  | 
+    b_storage: Storage,                                                                  | 
+    b_shape: Shape,                                                                      | 
+    b_strides: Strides,                                                                  | 
+) -> None:                                                                               | 
+    """NUMBA tensor matrix multiply function.                                            | 
+                                                                                         | 
+    Should work for any tensor shapes that broadcast as long as                          | 
+                                                                                         | 
+    ```                                                                                  | 
+    assert a_shape[-1] == b_shape[-2]                                                    | 
+    ```                                                                                  | 
+                                                                                         | 
+    Optimizations:                                                                       | 
+                                                                                         | 
+    * Outer loop in parallel                                                             | 
+    * No index buffers or function calls                                                 | 
+    * Inner loop should have no global writes, 1 multiply.                               | 
+                                                                                         | 
+                                                                                         | 
+    Args:                                                                                | 
+    ----                                                                                 | 
+        out (Storage): storage for `out` tensor                                          | 
+        out_shape (Shape): shape for `out` tensor                                        | 
+        out_strides (Strides): strides for `out` tensor                                  | 
+        a_storage (Storage): storage for `a` tensor                                      | 
+        a_shape (Shape): shape for `a` tensor                                            | 
+        a_strides (Strides): strides for `a` tensor                                      | 
+        b_storage (Storage): storage for `b` tensor                                      | 
+        b_shape (Shape): shape for `b` tensor                                            | 
+        b_strides (Strides): strides for `b` tensor                                      | 
+                                                                                         | 
+    Returns:                                                                             | 
+    -------                                                                              | 
+        None : Fills in `out`                                                            | 
+                                                                                         | 
+    """                                                                                  | 
+    a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0                               | 
+    b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0                               | 
+    for x in prange(out_shape[0]):-------------------------------------------------------| #7
+        for y in prange(out_shape[1]):---------------------------------------------------| #6
+            for z in prange(out_shape[2]):-----------------------------------------------| #5
+                val = 0.0                                                                | 
+                posA = x * a_batch_stride + y * a_strides[1]                             | 
+                posB = x * b_batch_stride + z * b_strides[2]                             | 
+                for a in range(a_shape[2]):                                              | 
+                    val += a_storage[posA] * b_storage[posB]                             | 
+                    posA += a_strides[2]                                                 | 
+                    posB += b_strides[1]                                                 | 
+                outPos = x * out_strides[0] + y * out_strides[1] + z * out_strides[2]    | 
+                out[outPos] = val                                                        | 
+--------------------------------- Fusing loops ---------------------------------
+Attempting fusion of parallel loops (combines loops with similar properties)...
+Following the attempted fusion of parallel for-loops there are 2 parallel for-
+loop(s) (originating from loops labelled: #7, #6).
+--------------------------------------------------------------------------------
+---------------------------- Optimising loop nests -----------------------------
+Attempting loop nest rewrites (optimising for the largest parallel loops)...
+ 
++--7 is a parallel loop
+   +--6 --> rewritten as a serial loop
+      +--5 --> rewritten as a serial loop
+--------------------------------------------------------------------------------
+----------------------------- Before Optimisation ------------------------------
+Parallel region 0:
++--7 (parallel)
+   +--6 (parallel)
+      +--5 (parallel)
+
+
+--------------------------------------------------------------------------------
+------------------------------ After Optimisation ------------------------------
+Parallel region 0:
++--7 (parallel)
+   +--6 (serial)
+      +--5 (serial)
+
+
+ 
+Parallel region 0 (loop #7) had 0 loop(s) fused and 2 loop(s) serialized as part
+ of the larger parallel loop (#7).
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+ 
+---------------------------Loop invariant code motion---------------------------
+Allocation hoisting:
+No allocation hoisting found
+None
+```
+
+
 # 3.4
 
 ![alt text](image.png)
@@ -54,6 +365,8 @@ Size: 1024
     gpu: 0.96579
 ```
 # 3.5
+
+# 100 hidden layers
 
 # CPU
 
@@ -274,6 +587,59 @@ Epoch 480 | loss 0.16305401406709458 | correct 50 | epoch time 1.490977048873901
 Epoch 490 | loss 0.014311784535155294 | correct 50 | epoch time 1.4987006187438965 seconds | total time 797.7280285358429 seconds
 ```
 ## Split
+```
+Epoch 0 | loss 7.242876742470489 | correct 30 | epoch time 4.013510704040527 seconds | total time 4.013513565063477 seconds
+Epoch 10 | loss 5.575623095053411 | correct 36 | epoch time 1.8177845478057861 seconds | total time 21.218565940856934 seconds
+Epoch 20 | loss 5.677144466699966 | correct 43 | epoch time 1.479471206665039 seconds | total time 38.699913024902344 seconds
+Epoch 30 | loss 3.965810902719598 | correct 36 | epoch time 1.5065670013427734 seconds | total time 54.82239031791687 seconds
+Epoch 40 | loss 2.9516102870399354 | correct 49 | epoch time 2.0334479808807373 seconds | total time 71.32211995124817 seconds
+Epoch 50 | loss 2.7300141347957636 | correct 45 | epoch time 1.5462183952331543 seconds | total time 87.98096656799316 seconds
+Epoch 60 | loss 1.3891578621084266 | correct 50 | epoch time 1.4970507621765137 seconds | total time 104.11457633972168 seconds
+Epoch 70 | loss 2.814506186281129 | correct 47 | epoch time 1.8312420845031738 seconds | total time 120.6017894744873 seconds
+Epoch 80 | loss 1.152268466246424 | correct 50 | epoch time 1.557795524597168 seconds | total time 137.19147777557373 seconds
+Epoch 90 | loss 1.1699484720733306 | correct 50 | epoch time 1.508108377456665 seconds | total time 153.1471893787384 seconds
+Epoch 100 | loss 0.9455153543810673 | correct 50 | epoch time 1.5398082733154297 seconds | total time 169.15946531295776 seconds
+Epoch 110 | loss 1.584557461741086 | correct 50 | epoch time 1.4825689792633057 seconds | total time 185.86317348480225 seconds
+Epoch 120 | loss 0.7549442692321643 | correct 50 | epoch time 1.6106815338134766 seconds | total time 201.9587640762329 seconds
+Epoch 130 | loss 0.5866151847715295 | correct 50 | epoch time 1.4889912605285645 seconds | total time 217.93776750564575 seconds
+Epoch 140 | loss 0.3086078469948652 | correct 50 | epoch time 1.6701092720031738 seconds | total time 234.78300428390503 seconds
+Epoch 150 | loss 0.41586132411811705 | correct 50 | epoch time 1.6483044624328613 seconds | total time 251.04856944084167 seconds
+Epoch 160 | loss 0.22461728877069065 | correct 50 | epoch time 1.535973072052002 seconds | total time 267.17671632766724 seconds
+Epoch 170 | loss 0.3831760330555765 | correct 50 | epoch time 1.9150707721710205 seconds | total time 283.85143089294434 seconds
+Epoch 180 | loss 0.24393195329916637 | correct 50 | epoch time 1.4682211875915527 seconds | total time 299.8438229560852 seconds
+Epoch 190 | loss 0.2504352918741054 | correct 50 | epoch time 1.5876376628875732 seconds | total time 316.5637457370758 seconds
+Epoch 200 | loss 0.606010390128654 | correct 50 | epoch time 2.018819570541382 seconds | total time 333.27129769325256 seconds
+Epoch 210 | loss 0.17007158452870266 | correct 50 | epoch time 1.4989020824432373 seconds | total time 349.28509855270386 seconds
+Epoch 220 | loss 0.3590193769137472 | correct 50 | epoch time 1.4944348335266113 seconds | total time 365.19175815582275 seconds
+Epoch 230 | loss 0.32888812071482526 | correct 50 | epoch time 2.0871334075927734 seconds | total time 381.62119603157043 seconds
+Epoch 240 | loss 0.23676656950831598 | correct 50 | epoch time 1.49302339553833 seconds | total time 397.8579840660095 seconds
+Epoch 250 | loss 0.06389092500200154 | correct 50 | epoch time 1.5307443141937256 seconds | total time 413.8343114852905 seconds
+Epoch 260 | loss 0.14048286538040752 | correct 50 | epoch time 1.695908784866333 seconds | total time 430.1287612915039 seconds
+Epoch 270 | loss 0.1034665735575998 | correct 50 | epoch time 1.5434999465942383 seconds | total time 446.6730422973633 seconds
+Epoch 280 | loss 0.07076099876008947 | correct 50 | epoch time 1.4904842376708984 seconds | total time 462.5325801372528 seconds
+Epoch 290 | loss 0.5255883455897852 | correct 50 | epoch time 1.4728167057037354 seconds | total time 478.42388916015625 seconds
+Epoch 300 | loss 0.29001071104389975 | correct 50 | epoch time 1.7684662342071533 seconds | total time 495.11680698394775 seconds
+Epoch 310 | loss 0.49525051008061227 | correct 50 | epoch time 1.5513288974761963 seconds | total time 511.12332820892334 seconds
+Epoch 320 | loss 0.22570464463554407 | correct 50 | epoch time 1.5341498851776123 seconds | total time 526.9531126022339 seconds
+Epoch 330 | loss 0.09409407909572536 | correct 50 | epoch time 2.2181379795074463 seconds | total time 543.5244147777557 seconds
+Epoch 340 | loss 0.11584631185843816 | correct 50 | epoch time 1.5276257991790771 seconds | total time 559.6545360088348 seconds
+Epoch 350 | loss 0.057213105204621126 | correct 50 | epoch time 1.5846426486968994 seconds | total time 575.7209901809692 seconds
+Epoch 360 | loss 0.018378591082503233 | correct 50 | epoch time 2.2230124473571777 seconds | total time 593.2015135288239 seconds
+Epoch 370 | loss 0.04468330068175246 | correct 50 | epoch time 1.4856534004211426 seconds | total time 609.0326237678528 seconds
+Epoch 380 | loss 0.03171825512444137 | correct 50 | epoch time 1.4755685329437256 seconds | total time 624.7479543685913 seconds
+Epoch 390 | loss 0.0722368713577935 | correct 50 | epoch time 1.610597848892212 seconds | total time 640.6713376045227 seconds
+Epoch 400 | loss 0.16730624537119138 | correct 50 | epoch time 1.4957928657531738 seconds | total time 657.190003156662 seconds
+Epoch 410 | loss 0.17421145574617003 | correct 50 | epoch time 1.461296558380127 seconds | total time 672.8873550891876 seconds
+Epoch 420 | loss 0.30511223213603206 | correct 50 | epoch time 1.4797143936157227 seconds | total time 688.6142973899841 seconds
+Epoch 430 | loss 0.19132467005032486 | correct 50 | epoch time 2.0960073471069336 seconds | total time 704.988972902298 seconds
+Epoch 440 | loss 0.24604446154130777 | correct 50 | epoch time 1.4537808895111084 seconds | total time 720.6024279594421 seconds
+Epoch 450 | loss 0.21910645816127933 | correct 50 | epoch time 1.4856140613555908 seconds | total time 736.2621042728424 seconds
+Epoch 460 | loss 0.10428806986158139 | correct 50 | epoch time 1.6030640602111816 seconds | total time 752.0731749534607 seconds
+Epoch 470 | loss 0.24173559622869414 | correct 50 | epoch time 1.5136654376983643 seconds | total time 768.3333702087402 seconds
+Epoch 480 | loss 0.28230462472398965 | correct 50 | epoch time 1.4673981666564941 seconds | total time 783.9595112800598 seconds
+Epoch 490 | loss 0.14131962332267828 | correct 50 | epoch time 1.4751832485198975 seconds | total time 799.5149960517883 seconds
+
+```
 
 ## XOR
 ```
@@ -327,4 +693,116 @@ Epoch 460 | loss 0.34345703704533814 | correct 50 | epoch time 1.478358745574951
 Epoch 470 | loss 0.8974137648735607 | correct 50 | epoch time 1.5378427505493164 seconds | total time 769.2941238880157 seconds
 Epoch 480 | loss 0.1876617309879365 | correct 50 | epoch time 1.7293179035186768 seconds | total time 786.0996913909912 seconds
 Epoch 490 | loss 0.21951363535238302 | correct 50 | epoch time 1.4905526638031006 seconds | total time 801.9476056098938 seconds
+```
+
+# Larger Dataset with 200 layers
+
+project/run_fast_tensor.py --BACKEND cpu --HIDDEN 200 --DATASET split --RATE 0.05
+
+## CPU
+```
+Epoch 0 | loss 16.807046640986382 | correct 28 | epoch time 13.590126991271973 seconds | total time 13.590129375457764 seconds
+Epoch 10 | loss 5.956363888394287 | correct 44 | epoch time 0.2367699146270752 seconds | total time 19.0807044506073 seconds
+Epoch 20 | loss 2.022759762286046 | correct 44 | epoch time 0.2776834964752197 seconds | total time 22.616990327835083 seconds
+Epoch 30 | loss 3.1636437120073397 | correct 43 | epoch time 0.22883820533752441 seconds | total time 24.9680233001709 seconds
+Epoch 40 | loss 4.717370040772411 | correct 44 | epoch time 0.23148870468139648 seconds | total time 27.32684326171875 seconds
+Epoch 50 | loss 9.421416207026232 | correct 35 | epoch time 0.2277054786682129 seconds | total time 29.66031789779663 seconds
+Epoch 60 | loss 3.870564549095194 | correct 45 | epoch time 0.25540924072265625 seconds | total time 32.01632285118103 seconds
+Epoch 70 | loss 1.7733213667863945 | correct 47 | epoch time 0.22699284553527832 seconds | total time 35.42496085166931 seconds
+Epoch 80 | loss 1.5898915023784632 | correct 47 | epoch time 0.23499822616577148 seconds | total time 37.77119302749634 seconds
+Epoch 90 | loss 4.156812931883418 | correct 47 | epoch time 0.2418067455291748 seconds | total time 40.09891319274902 seconds
+Epoch 100 | loss 0.8660604539546644 | correct 47 | epoch time 0.22871041297912598 seconds | total time 42.42984700202942 seconds
+Epoch 110 | loss 2.48890180169736 | correct 46 | epoch time 0.3484196662902832 seconds | total time 44.900704860687256 seconds
+Epoch 120 | loss 1.6202397209301815 | correct 46 | epoch time 0.24008464813232422 seconds | total time 48.168373823165894 seconds
+Epoch 130 | loss 1.9049131119523979 | correct 48 | epoch time 0.2359933853149414 seconds | total time 50.50866198539734 seconds
+Epoch 140 | loss 1.3198736427528972 | correct 49 | epoch time 0.25353240966796875 seconds | total time 52.89616823196411 seconds
+Epoch 150 | loss 1.0138463665917135 | correct 49 | epoch time 0.26067137718200684 seconds | total time 55.27880120277405 seconds
+Epoch 160 | loss 1.6305901095674462 | correct 49 | epoch time 0.4129791259765625 seconds | total time 58.10507130622864 seconds
+Epoch 170 | loss 1.0022014764054779 | correct 50 | epoch time 0.22922682762145996 seconds | total time 61.13020324707031 seconds
+Epoch 180 | loss 1.3385699827945619 | correct 48 | epoch time 0.23232722282409668 seconds | total time 63.46898579597473 seconds
+Epoch 190 | loss 0.6682567660468182 | correct 49 | epoch time 0.24846124649047852 seconds | total time 65.82443976402283 seconds
+Epoch 200 | loss 1.0793924538977917 | correct 48 | epoch time 0.23415732383728027 seconds | total time 68.1523847579956 seconds
+Epoch 210 | loss 1.5218318253722147 | correct 49 | epoch time 0.41463470458984375 seconds | total time 71.2200038433075 seconds
+Epoch 220 | loss 1.2758472915387404 | correct 50 | epoch time 0.2284560203552246 seconds | total time 73.92723727226257 seconds
+Epoch 230 | loss 1.7332361189261125 | correct 46 | epoch time 0.24599289894104004 seconds | total time 76.27759957313538 seconds
+Epoch 240 | loss 0.964913060363399 | correct 50 | epoch time 0.22843074798583984 seconds | total time 78.62952470779419 seconds
+Epoch 250 | loss 2.467470913317485 | correct 49 | epoch time 0.2303164005279541 seconds | total time 80.95132970809937 seconds
+Epoch 260 | loss 0.5241865706323042 | correct 49 | epoch time 0.5418171882629395 seconds | total time 84.4256489276886 seconds
+Epoch 270 | loss 1.3489180876942766 | correct 50 | epoch time 0.23036742210388184 seconds | total time 86.84014105796814 seconds
+Epoch 280 | loss 1.5251741130664307 | correct 46 | epoch time 0.2331240177154541 seconds | total time 89.17358350753784 seconds
+Epoch 290 | loss 1.2145626143442483 | correct 50 | epoch time 0.22544145584106445 seconds | total time 91.5053141117096 seconds
+Epoch 300 | loss 0.574260164941563 | correct 50 | epoch time 0.23740148544311523 seconds | total time 93.83578300476074 seconds
+Epoch 310 | loss 1.0710171078547432 | correct 50 | epoch time 0.22670459747314453 seconds | total time 97.34079194068909 seconds
+Epoch 320 | loss 0.22513330944285076 | correct 49 | epoch time 0.2426283359527588 seconds | total time 99.68033814430237 seconds
+Epoch 330 | loss 1.4019267816759582 | correct 49 | epoch time 0.24341106414794922 seconds | total time 102.02566576004028 seconds
+Epoch 340 | loss 1.70918833040189 | correct 50 | epoch time 0.2282099723815918 seconds | total time 104.39382433891296 seconds
+Epoch 350 | loss 0.9847128195431414 | correct 49 | epoch time 0.2283186912536621 seconds | total time 106.749267578125 seconds
+Epoch 360 | loss 0.5831222372671203 | correct 49 | epoch time 0.24246454238891602 seconds | total time 110.22292709350586 seconds
+Epoch 370 | loss 0.2862159726951984 | correct 50 | epoch time 0.22955727577209473 seconds | total time 112.56196141242981 seconds
+Epoch 380 | loss 0.5116075578406765 | correct 50 | epoch time 0.2267305850982666 seconds | total time 114.93701529502869 seconds
+Epoch 390 | loss 0.27620595400643283 | correct 49 | epoch time 0.22893881797790527 seconds | total time 117.28829050064087 seconds
+Epoch 400 | loss 0.7537608227976041 | correct 50 | epoch time 0.2270348072052002 seconds | total time 119.62022304534912 seconds
+Epoch 410 | loss 0.2932933821390051 | correct 50 | epoch time 0.22967910766601562 seconds | total time 123.06988406181335 seconds
+Epoch 420 | loss 0.20764322010959846 | correct 50 | epoch time 0.223677396774292 seconds | total time 125.3777289390564 seconds
+Epoch 430 | loss 0.2643611931735897 | correct 50 | epoch time 0.24182391166687012 seconds | total time 127.74966835975647 seconds
+Epoch 440 | loss 0.2009744150101435 | correct 50 | epoch time 0.22732996940612793 seconds | total time 130.08206486701965 seconds
+Epoch 450 | loss 0.2295148637982115 | correct 50 | epoch time 0.4003775119781494 seconds | total time 132.59536409378052 seconds
+Epoch 460 | loss 0.29758722190118503 | correct 50 | epoch time 0.24025869369506836 seconds | total time 135.8920338153839 seconds
+Epoch 470 | loss 0.1955583128073147 | correct 50 | epoch time 0.22382473945617676 seconds | total time 138.23274755477905 seconds
+Epoch 480 | loss 0.6092969059774767 | correct 50 | epoch time 0.22689342498779297 seconds | total time 140.54881715774536 seconds
+Epoch 490 | loss 0.17075500014097358 | correct 50 | epoch time 0.22673439979553223 seconds | total time 142.90351247787476 seconds
+```
+
+## GPU
+```
+Epoch 0 | loss 26.94628194495842 | correct 27 | epoch time 3.94549822807312 seconds | total time 3.9455008506774902 seconds
+Epoch 10 | loss 6.9754024965847 | correct 29 | epoch time 1.6938190460205078 seconds | total time 21.299675226211548 seconds
+Epoch 20 | loss 2.9656997210133142 | correct 47 | epoch time 1.5520262718200684 seconds | total time 38.73555874824524 seconds
+Epoch 30 | loss 1.8319893253207078 | correct 47 | epoch time 1.5544407367706299 seconds | total time 55.381118297576904 seconds
+Epoch 40 | loss 0.740981884316607 | correct 45 | epoch time 2.3972034454345703 seconds | total time 72.8120002746582 seconds
+Epoch 50 | loss 1.0147219357929251 | correct 49 | epoch time 1.5591092109680176 seconds | total time 89.39534783363342 seconds
+Epoch 60 | loss 1.3336244643583666 | correct 50 | epoch time 1.5923340320587158 seconds | total time 106.08291578292847 seconds
+Epoch 70 | loss 0.8370823931717587 | correct 50 | epoch time 1.6643548011779785 seconds | total time 123.64160919189453 seconds
+Epoch 80 | loss 0.44751895482238413 | correct 50 | epoch time 1.6312341690063477 seconds | total time 140.29954385757446 seconds
+Epoch 90 | loss 0.24697600900188615 | correct 50 | epoch time 1.7488646507263184 seconds | total time 157.19322180747986 seconds
+Epoch 100 | loss 1.2004713554976443 | correct 49 | epoch time 1.5560331344604492 seconds | total time 174.4821240901947 seconds
+Epoch 110 | loss 0.13187970294496143 | correct 50 | epoch time 1.5795371532440186 seconds | total time 191.18791341781616 seconds
+Epoch 120 | loss 0.280990324200305 | correct 50 | epoch time 2.2466862201690674 seconds | total time 208.90812015533447 seconds
+Epoch 130 | loss 0.3425839740790232 | correct 50 | epoch time 1.567363977432251 seconds | total time 225.83351278305054 seconds
+Epoch 140 | loss 0.30036643774596017 | correct 50 | epoch time 1.5574142932891846 seconds | total time 243.21243524551392 seconds
+Epoch 150 | loss 0.4790346437315593 | correct 50 | epoch time 1.6274409294128418 seconds | total time 260.6628713607788 seconds
+Epoch 160 | loss 0.3139165180820887 | correct 50 | epoch time 1.5767936706542969 seconds | total time 277.35808634757996 seconds
+Epoch 170 | loss 0.17250370325350717 | correct 50 | epoch time 2.2537059783935547 seconds | total time 294.6759021282196 seconds
+Epoch 180 | loss 0.09729256399501353 | correct 50 | epoch time 1.555628776550293 seconds | total time 311.43826150894165 seconds
+Epoch 190 | loss 0.43793507716704655 | correct 50 | epoch time 1.6123762130737305 seconds | total time 328.0917179584503 seconds
+Epoch 200 | loss 0.12945727493218145 | correct 50 | epoch time 1.8764541149139404 seconds | total time 345.51018500328064 seconds
+Epoch 210 | loss 0.22765830232500667 | correct 50 | epoch time 1.549184799194336 seconds | total time 362.1867518424988 seconds
+Epoch 220 | loss 0.4281435307985772 | correct 50 | epoch time 1.5704660415649414 seconds | total time 378.7691550254822 seconds
+Epoch 230 | loss 0.1066648518566767 | correct 50 | epoch time 1.6185519695281982 seconds | total time 396.2279529571533 seconds
+Epoch 240 | loss 0.14911218832052545 | correct 50 | epoch time 1.5642359256744385 seconds | total time 412.9546318054199 seconds
+Epoch 250 | loss 0.5793231875343391 | correct 50 | epoch time 2.093015670776367 seconds | total time 430.05061745643616 seconds
+Epoch 260 | loss 0.2790606671642179 | correct 50 | epoch time 1.5657200813293457 seconds | total time 447.0143082141876 seconds
+Epoch 270 | loss 0.4472959809446048 | correct 50 | epoch time 1.6186912059783936 seconds | total time 463.74245381355286 seconds
+Epoch 280 | loss 0.2361376520017713 | correct 50 | epoch time 2.0333518981933594 seconds | total time 481.23891019821167 seconds
+Epoch 290 | loss 0.522527937998228 | correct 50 | epoch time 2.07991623878479 seconds | total time 498.72873616218567 seconds
+Epoch 300 | loss 0.27535934642562493 | correct 50 | epoch time 1.742194652557373 seconds | total time 515.5224738121033 seconds
+Epoch 310 | loss 0.33428614933050316 | correct 50 | epoch time 1.6211187839508057 seconds | total time 533.0998945236206 seconds
+Epoch 320 | loss 0.17540701292767957 | correct 50 | epoch time 1.5636184215545654 seconds | total time 549.6588470935822 seconds
+Epoch 330 | loss 0.3913409353790902 | correct 50 | epoch time 2.2951841354370117 seconds | total time 567.05042719841 seconds
+Epoch 340 | loss 0.022449031219423144 | correct 50 | epoch time 1.5626728534698486 seconds | total time 583.665456533432 seconds
+Epoch 350 | loss 0.12844406669398384 | correct 50 | epoch time 1.6254401206970215 seconds | total time 600.2146193981171 seconds
+Epoch 360 | loss 0.054715138308623484 | correct 50 | epoch time 1.7260510921478271 seconds | total time 617.6029198169708 seconds
+Epoch 370 | loss 0.2114993401644164 | correct 50 | epoch time 1.5598211288452148 seconds | total time 634.1712336540222 seconds
+Epoch 380 | loss 0.16713398929352322 | correct 50 | epoch time 1.565821886062622 seconds | total time 650.7930829524994 seconds
+Epoch 390 | loss 0.21913603418470645 | correct 50 | epoch time 1.6053345203399658 seconds | total time 668.166273355484 seconds
+Epoch 400 | loss 0.13253839916987123 | correct 50 | epoch time 1.5644519329071045 seconds | total time 684.7170429229736 seconds
+Epoch 410 | loss 0.2920313710640657 | correct 50 | epoch time 1.9559235572814941 seconds | total time 701.6285755634308 seconds
+Epoch 420 | loss 0.03231426092454452 | correct 50 | epoch time 1.5593512058258057 seconds | total time 718.6856105327606 seconds
+Epoch 430 | loss 0.08335162174310606 | correct 50 | epoch time 1.6066598892211914 seconds | total time 735.3294727802277 seconds
+Epoch 440 | loss 0.10655329686591099 | correct 50 | epoch time 2.1682231426239014 seconds | total time 752.7304358482361 seconds
+Epoch 450 | loss 0.21621674779071376 | correct 50 | epoch time 1.5797853469848633 seconds | total time 770.2040588855743 seconds
+Epoch 460 | loss 0.030718237089287233 | correct 50 | epoch time 1.5570132732391357 seconds | total time 786.7735495567322 seconds
+Epoch 470 | loss 0.2575500375904278 | correct 50 | epoch time 1.6586799621582031 seconds | total time 804.2866394519806 seconds
+Epoch 480 | loss 0.14026959936007488 | correct 50 | epoch time 1.558539628982544 seconds | total time 821.0028927326202 seconds
+Epoch 490 | loss 0.18854501695011422 | correct 50 | epoch time 2.058563232421875 seconds | total time 838.2087996006012 seconds
 ```
