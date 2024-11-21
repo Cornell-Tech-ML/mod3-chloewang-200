@@ -345,13 +345,33 @@ def tensor_reduce(
         BLOCK_DIM = 1024
         cache = cuda.shared.array(BLOCK_DIM, numba.float64)
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
-        out_pos = cuda.blockIdx.x
+        i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
         pos = cuda.threadIdx.x
 
-        # TODO: Implement for Task 3.3.
-        raise NotImplementedError("Need to implement for Task 3.3")
+        # Compute the output position
+        if i < out_size:
+            to_index(i, out_shape, out_index)
+            base_position = index_to_position(out_index, a_strides)
 
-    return jit(_reduce)  # type: ignore
+            # Initialize shared memory with reduction identity value
+            cache[pos] = reduce_value
+            if pos < a_shape[reduce_dim]:
+                cache[pos] = a_storage[base_position + pos * a_strides[reduce_dim]]
+            cuda.syncthreads()
+
+            # Perform reduction within the block
+            stride = 1
+            while stride < BLOCK_DIM:
+                if pos % (2 * stride) == 0 and pos + stride < BLOCK_DIM:
+                    cache[pos] = fn(cache[pos], cache[pos + stride])
+                stride *= 2
+                cuda.syncthreads()
+
+            # Write the reduced result to the output
+            if pos == 0:
+                out[i] = cache[0]
+
+    return cuda.jit()(_reduce)
 
 
 def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
@@ -386,8 +406,47 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
 
     """
     BLOCK_DIM = 32
-    # TODO: Implement for Task 3.3.
-    raise NotImplementedError("Need to implement for Task 3.3")
+
+    shared_a = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
+    shared_b = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
+
+    tx = cuda.threadIdx.x
+    ty = cuda.threadIdx.y
+    bx = cuda.blockIdx.x
+    by = cuda.blockIdx.y
+
+    row = by * BLOCK_DIM + ty
+    col = bx * BLOCK_DIM + tx
+
+    # Initialize output value
+    temp = 0.0
+
+    for m in range(size // BLOCK_DIM):
+        # Load elements into shared memory
+        if row < size and (m * BLOCK_DIM + tx) < size:
+            shared_a[ty, tx] = a[row * size + m * BLOCK_DIM + tx]
+        else:
+            shared_a[ty, tx] = 0.0
+
+        if col < size and (m * BLOCK_DIM + ty) < size:
+            shared_b[ty, tx] = b[(m * BLOCK_DIM + ty) * size + col]
+        else:
+            shared_b[ty, tx] = 0.0
+
+        cuda.syncthreads()
+
+        # Compute partial product
+        for k in range(BLOCK_DIM):
+            temp += shared_a[ty, k] * shared_b[k, tx]
+
+        cuda.syncthreads()
+
+    # Write the result to the output
+    if row < size and col < size:
+        out[row * size + col] = temp
+
+
+jit_mm_practice = cuda.jit()(_mm_practice)
 
 
 jit_mm_practice = jit(_mm_practice)
