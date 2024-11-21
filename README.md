@@ -31,6 +31,28 @@ The files that will be synced are:
 
         minitorch/tensor_data.py minitorch/tensor_functions.py minitorch/tensor_ops.py minitorch/operators.py minitorch/scalar.py minitorch/scalar_functions.py minitorch/module.py minitorch/autodiff.py minitorch/module.py project/run_manual.py project/run_scalar.py project/run_tensor.py minitorch/operators.py minitorch/module.py minitorch/autodiff.py minitorch/tensor.py minitorch/datasets.py minitorch/testing.py minitorch/optim.py
 
+# 3.4
+
+![alt text](image.png)
+Timing output:
+```
+Timing summary
+Size: 64
+    fast: 0.00294
+    gpu: 0.00559
+Size: 128
+    fast: 0.01394
+    gpu: 0.01277
+Size: 256
+    fast: 0.09210
+    gpu: 0.04554
+Size: 512
+    fast: 1.19863
+    gpu: 0.26912
+Size: 1024
+    fast: 7.63548
+    gpu: 0.96579
+```
 # 3.5
 
 ## Simple
