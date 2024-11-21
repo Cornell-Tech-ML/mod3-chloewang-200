@@ -175,15 +175,10 @@ def tensor_map(
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
         # TODO: Implement for Task 3.3.
         # Calculate the global thread index
-        i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
 
         # Ensure the thread index is within the bounds of the output tensor
         if i >= out_size:
             return
-
-        # Allocate local arrays for indexing
-        out_index = cuda.local.array(MAX_DIMS, numba.int32)
-        in_index = cuda.local.array(MAX_DIMS, numba.int32)
 
         # Convert the flat index to multi-dimensional index
         to_index(i, out_shape, out_index)
@@ -313,10 +308,7 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
     if pos == 0:
         out[cuda.blockIdx.x] = cache[0]
 
-
-
 jit_sum_practice = cuda.jit()(_sum_practice)
-
 
 def sum_practice(a: Tensor) -> TensorData:
     (size,) = a.shape
@@ -356,6 +348,7 @@ def tensor_reduce(
         reduce_dim: int,
         reduce_value: float,
     ) -> None:
+
         BLOCK_DIM = 1024
         cache = cuda.shared.array(BLOCK_DIM, numba.float64)
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
@@ -529,7 +522,44 @@ def _tensor_matrix_multiply(
     #    b) Copy into shared memory for b matrix
     #    c) Compute the dot produce for position c[i, j]
     # TODO: Implement for Task 3.4.
-    raise NotImplementedError("Need to implement for Task 3.4")
+    # Accumulator for the result
+    acc = 0.0
+
+    # Total number of tiles to cover the shared dimension
+    num_tiles = (a_shape[-1] + BLOCK_DIM - 1) // BLOCK_DIM
+
+    for tile in range(num_tiles):
+        # Load a tile of `a` into shared memory
+        tile_k = tile * BLOCK_DIM + pj
+        if i < a_shape[1] and tile_k < a_shape[-1]:
+            a_shared[pi, pj] = a_storage[
+                batch * a_batch_stride + i * a_strides[1] + tile_k * a_strides[2]
+            ]
+        else:
+            a_shared[pi, pj] = 0.0
+
+        # Load a tile of `b` into shared memory
+        tile_k = tile * BLOCK_DIM + pi
+        if tile_k < b_shape[1] and j < b_shape[2]:
+            b_shared[pi, pj] = b_storage[
+                batch * b_batch_stride + tile_k * b_strides[1] + j * b_strides[2]
+            ]
+        else:
+            b_shared[pi, pj] = 0.0
+
+        # Synchronize threads to ensure the tile is fully loaded
+        cuda.syncthreads()
+
+        # Perform dot product for the current tile
+        for k in range(BLOCK_DIM):
+            acc += a_shared[pi, k] * b_shared[k, pj]
+
+        # Synchronize again before loading the next tile
+        cuda.syncthreads()
+
+    # Write the accumulated result to the output storage
+    if i < out_shape[1] and j < out_shape[2]:
+        out[batch * out_strides[0] + i * out_strides[1] + j * out_strides[2]] = acc
 
 
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)
