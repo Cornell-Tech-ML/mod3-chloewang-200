@@ -55,6 +55,7 @@ class TensorOps:
         -------
             Callable[[Tensor, int], Tensor]: A function that takes a tensor and a dimension,
             then applies the reduction along that dimension, producing a new tensor.
+
         """
         ...
 
