@@ -1,5 +1,10 @@
 from numba import njit
+from pathlib import Path
+import sys
 
+import streamlit as st
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 import minitorch
 import minitorch.fast_ops
 
